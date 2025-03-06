@@ -34,6 +34,18 @@ Digital cameras often reset their file numbering when SD cards are formatted, ma
 
 ## Installation
 
+### Quick Install (Prebuilt Binaries)
+
+The easiest way to get started is to download the pre-built executable for your operating system:
+
+1. Go to the [Releases page](https://github.com/larsniet/image-renamer/releases/latest)
+2. Download the appropriate file for your system:
+   - **Windows**: Download `imagerenamer-windows.exe`
+   - **macOS**: Download `imagerenamer-macos.zip`, extract and open the app
+   - **Linux**: Download `imagerenamer-linux`, make it executable with `chmod +x imagerenamer-linux`, and run it
+
+No installation is required - just download and run!
+
 ### From Source
 
 1. Clone this repository:
@@ -47,7 +59,7 @@ Digital cameras often reset their file numbering when SD cards are formatted, ma
    pip install -e .
    ```
 
-### From PyPI (coming soon)
+### From PyPI
 
 ```bash
 pip install imagerenamer

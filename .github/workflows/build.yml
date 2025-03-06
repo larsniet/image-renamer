@@ -12,18 +12,34 @@ permissions:
 jobs:
   create-release:
     runs-on: ubuntu-latest
-    outputs:
-      upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
+      - uses: actions/checkout@v3
+      
       - name: Create Release
         id: create_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: "Image Renamer ${{ github.ref_name }}"
           draft: false
           prerelease: false
           generate_release_notes: true
+          body: |
+            ## Image Renamer ${{ github.ref_name }}
+            
+            A simple, elegant tool for renaming your images based on their creation date.
+            
+            ### 📥 Downloads
+            
+            Choose the version for your operating system:
+            
+            - **Windows**: Download `imagerenamer-windows.exe` and double-click to run
+            - **macOS**: Download `imagerenamer-macos.zip`, extract and open the app
+            - **Linux**: Download `imagerenamer-linux` and run it from the terminal
+            
+            ### Changes in this version
+            
+            _See the automatically generated release notes below for details on changes_
           
   build-windows:
     needs: create-release
@@ -55,14 +71,16 @@ jobs:
         run: |
           pyinstaller --name=imagerenamer --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico imagerenamer/gui.py
           
-      - name: Create ZIP Archive
+      - name: Prepare Assets
         run: |
-          Compress-Archive -Path dist\imagerenamer.exe -DestinationPath imagerenamer-windows.zip
+          # Make a copy with a more descriptive name
+          Copy-Item -Path "dist\imagerenamer.exe" -Destination "imagerenamer-windows.exe"
           
-      - name: Upload Release Asset
+      - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
-          files: ./imagerenamer-windows.zip
+          files: |
+            imagerenamer-windows.exe
           
   build-macos:
     needs: create-release
@@ -101,7 +119,8 @@ jobs:
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ./imagerenamer-macos.zip
+          files: |
+            imagerenamer-macos.zip
           
   build-linux:
     needs: create-release
@@ -136,11 +155,14 @@ jobs:
         run: |
           pyinstaller --name=imagerenamer --onefile --add-data="LICENSE:." imagerenamer/gui.py
           
-      - name: Create Archive
+      - name: Prepare Assets
         run: |
-          tar -czvf imagerenamer-linux.tar.gz -C dist imagerenamer
+          # Copy with a more descriptive name
+          cp dist/imagerenamer imagerenamer-linux
+          chmod +x imagerenamer-linux
           
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
         with:
-          files: ./imagerenamer-linux.tar.gz 
+          files: |
+            imagerenamer-linux 
