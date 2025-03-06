@@ -205,11 +205,16 @@ jobs:
             exit 0
           fi
           
+          # Define default keychain password if not set
+          DEFAULT_KEYCHAIN_PASSWORD="temporary-keychain-password"
+          KEYCHAIN_PASSWORD="${MACOS_KEYCHAIN_PASSWORD:-$DEFAULT_KEYCHAIN_PASSWORD}"
+          echo "Using keychain password (default if not set)"
+          
           # Create keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-          security create-keychain -p "${MACOS_KEYCHAIN_PASSWORD:-applesign}" $KEYCHAIN_PATH
+          security create-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security default-keychain -s $KEYCHAIN_PATH
-          security unlock-keychain -p "${MACOS_KEYCHAIN_PASSWORD:-applesign}" $KEYCHAIN_PATH
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
           
           # Import certificate to keychain
@@ -218,42 +223,64 @@ jobs:
           # Import certificate - with or without password
           if [ -z "$MACOS_P12_PASSWORD" ]; then
             # Import without password
+            echo "Importing certificate without password"
             security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           else
             # Import with password
+            echo "Importing certificate with password"
             security import $RUNNER_TEMP/certificate.p12 -P "$MACOS_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
           fi
           
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "${MACOS_KEYCHAIN_PASSWORD:-applesign}" $KEYCHAIN_PATH
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           
           # Sign the app
+          echo "Signing the application with Developer ID: $MACOS_DEVELOPER_ID"
           codesign --force --options runtime --sign "$MACOS_DEVELOPER_ID" --timestamp "dist/Image Renamer.app"
-          
+          echo "Application signed successfully"
+      
       - name: Notarize App
-        if: env.MACOS_CERTIFICATE_BASE64 != ''
+        if: env.MACOS_CERTIFICATE_BASE64 != '' && env.MACOS_APPLE_ID != '' && env.MACOS_APPLE_PASSWORD != '' && env.MACOS_APPLE_TEAM_ID != ''
         env:
           MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
           MACOS_APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
           MACOS_APPLE_TEAM_ID: ${{ secrets.MACOS_APPLE_TEAM_ID }}
         run: |
-          # Create a zip file for notarization
+          echo "Starting notarization process..."
+          
+          # Validate Apple ID related environment variables
+          if [ -z "$MACOS_APPLE_ID" ] || [ -z "$MACOS_APPLE_PASSWORD" ] || [ -z "$MACOS_APPLE_TEAM_ID" ]; then
+            echo "Error: Apple ID, password or team ID is not set. Skipping notarization."
+            exit 0
+          fi
+          
+          echo "Creating zip file for notarization..."
           ditto -c -k --keepParent "dist/Image Renamer.app" "Image Renamer.zip"
           
-          # Notarize the app
-          xcrun notarytool submit "Image Renamer.zip" \
+          echo "Submitting app for notarization with Team ID: $MACOS_APPLE_TEAM_ID"
+          NOTARIZE_RESULT=$(xcrun notarytool submit "Image Renamer.zip" \
             --apple-id "$MACOS_APPLE_ID" \
             --password "$MACOS_APPLE_PASSWORD" \
             --team-id "$MACOS_APPLE_TEAM_ID" \
             --progress \
-            --wait
+            --wait)
+            
+          echo "Notarization submission completed."
+          echo "$NOTARIZE_RESULT"
           
-          # Staple the notarization ticket to the app
-          xcrun stapler staple "dist/Image Renamer.app"
+          # Check if notarization was successful by looking for "success" in the output
+          if echo "$NOTARIZE_RESULT" | grep -q "success"; then
+            echo "Notarization succeeded! Stapling notarization ticket to the app..."
+            xcrun stapler staple "dist/Image Renamer.app"
+            echo "Stapling complete!"
+          else
+            echo "Warning: Notarization may have failed. Will still create the zip file, but the app may show security warnings."
+          fi
           
-          # Create the final distributable zip
+          echo "Creating final distributable ZIP..."
           cd dist
           zip -r ../imagerenamer-macos.zip "Image Renamer.app"
           cd ..
+          echo "ZIP file created successfully."
           
       - name: Create Unsigned ZIP Archive (Fallback)
         if: env.MACOS_CERTIFICATE_BASE64 == ''
