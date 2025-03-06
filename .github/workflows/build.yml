@@ -294,7 +294,7 @@ jobs:
           echo "MACOS_APPLE_TEAM_ID is set: $([[ -n "$MACOS_APPLE_TEAM_ID" ]] && echo 'YES' || echo 'NO')"
           
       - name: Notarize App
-        if: secrets.MACOS_APPLE_ID != '' && secrets.MACOS_APPLE_PASSWORD != '' && secrets.MACOS_APPLE_TEAM_ID != ''
+        if: env.MACOS_APPLE_ID != '' && env.MACOS_APPLE_PASSWORD != '' && env.MACOS_APPLE_TEAM_ID != ''
         env:
           MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
           MACOS_APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
