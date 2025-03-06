@@ -46,10 +46,17 @@ if [ $? -ne 0 ]; then
   exit 1
 fi
 
-# Update version in __init__.py
+# Update version in __init__.py using platform-specific approach
 echo -e "\n${YELLOW}Updating version to $NEW_VERSION in __init__.py...${NC}"
-sed -i.bak "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" imagerenamer/__init__.py
-rm imagerenamer/__init__.py.bak  # Remove backup file
+
+# For macOS compatibility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+  # macOS requires an empty string after -i
+  sed -i "" "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" imagerenamer/__init__.py
+else
+  # Linux doesn't need the empty string
+  sed -i "s/__version__ = \".*\"/__version__ = \"$NEW_VERSION\"/" imagerenamer/__init__.py
+fi
 
 # Commit version change
 echo -e "\n${YELLOW}Committing version change...${NC}"
@@ -68,5 +75,5 @@ git push origin "v$NEW_VERSION"
 echo -e "\n${GREEN}Release process started successfully!${NC}"
 echo -e "${BLUE}GitHub Actions will now build and publish the release.${NC}"
 echo -e "${BLUE}You can monitor the progress at:${NC}"
-echo -e "${YELLOW}https://github.com/yourusername/image-renamer/actions${NC}"
+echo -e "${YELLOW}https://github.com/larsniet/image-renamer/actions${NC}"
 echo -e "\n${GREEN}Don't forget to update the README or documentation with any new features or changes!${NC}" 
