@@ -42,6 +42,7 @@ The easiest way to get started is to download the pre-built executable for your 
 2. Download the appropriate file for your system:
    - **Windows**: Download `imagerenamer-windows.exe`
    - **macOS**: Download `imagerenamer-macos.zip`, extract and open the app
+     - **Important**: When first opening the app, you may see a security warning. Instead of clicking the app directly, right-click (or Ctrl+click) on it and select "Open" from the menu. When prompted, click "Open" again. You only need to do this once.
    - **Linux**: Download `imagerenamer-linux`, make it executable with `chmod +x imagerenamer-linux`, and run it
 
 No installation is required - just download and run!
@@ -230,9 +231,13 @@ If you prefer to release manually:
 
 You can download the latest binary release for your platform from the [Releases page](https://github.com/larsniet/image-renamer/releases).
 
-- **Windows**: Extract the ZIP file and run `imagerenamer.exe`
-- **macOS**: Extract the ZIP file, move `imagerenamer.app` to your Applications folder
-- **Linux**: Extract the tarball and run the `imagerenamer` executable
+- **Windows**: Download and run `imagerenamer-windows.exe`
+- **macOS**: 
+  1. Download and extract `imagerenamer-macos.zip`
+  2. Move `Image Renamer.app` to your Applications folder
+  3. **Bypassing Security Warning**: When first launching, right-click (or Ctrl+click) on the app and select "Open" from the menu, then click "Open" in the dialog. This is only needed the first time you run the app.
+  4. Alternatively, you can go to System Preferences → Security & Privacy → General and click "Open Anyway"
+- **Linux**: Download `imagerenamer-linux`, make it executable with `chmod +x imagerenamer-linux`, and run it
 
 ## License
 
