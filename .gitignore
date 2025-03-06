@@ -47,3 +47,5 @@ coverage.xml
 *.log
 *.tmp
 *.bak 
+
+certificate.p12

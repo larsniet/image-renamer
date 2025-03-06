@@ -200,8 +200,17 @@ jobs:
           MACOS_DEVELOPER_ID: ${{ secrets.MACOS_DEVELOPER_ID }}
         run: |
           # Skip if secrets are not available (e.g., in fork PRs)
-          if [ -z "$MACOS_CERTIFICATE_BASE64" ]; then
-            echo "Skipping code signing - no certificate available"
+          if [ -z "$MACOS_CERTIFICATE_BASE64" ] || [ -z "$MACOS_DEVELOPER_ID" ]; then
+            echo "Certificate or Developer ID not provided - using ad-hoc signing instead"
+            echo "Signing the application with ad-hoc identity (no Apple verification)"
+            codesign --force --deep --sign - "dist/Image Renamer.app"
+            echo "Ad-hoc signing completed successfully"
+            
+            echo "Creating zip file for distribution..."
+            cd dist
+            zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+            cd ..
+            echo "ZIP file created successfully."
             exit 0
           fi
           
@@ -228,39 +237,49 @@ jobs:
           # First, try with provided password
           if [ -n "$MACOS_P12_PASSWORD" ]; then
             echo "Attempting import with provided password..."
-            if security import $RUNNER_TEMP/certificate.p12 -P "$MACOS_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+            if timeout 30s security import $RUNNER_TEMP/certificate.p12 -P "$MACOS_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
               echo "Certificate imported successfully with provided password."
             else
               echo "Failed to import with provided password, will try empty password..."
               # Try with empty string password
-              if security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+              if timeout 30s security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
                 echo "Certificate imported successfully with empty string password."
               else
                 echo "Failed to import with empty password, will try no password..."
                 # Try with no password
-                if security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+                if timeout 30s security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
                   echo "Certificate imported successfully with no password."
                 else
                   echo "ERROR: All certificate import attempts failed."
                   echo "Please check your certificate - it likely requires a password."
-                  exit 1
+                  echo "Creating unsigned app as fallback..."
+                  cd dist
+                  zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+                  cd ..
+                  echo "Unsigned ZIP file created successfully."
+                  exit 0
                 fi
               fi
             fi
           else
             echo "No password provided, trying import without password..."
-            # Try without password
-            if security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+            # Try without password (with 30 second timeout)
+            if timeout 30s security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
               echo "Certificate imported successfully with no password."
             else
               echo "Failed with no password, trying with empty string..."
               # Try with empty string
-              if security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+              if timeout 30s security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
                 echo "Certificate imported successfully with empty string password."
               else
                 echo "ERROR: Certificate import failed. Your certificate likely requires a password."
                 echo "Please add the MACOS_P12_PASSWORD secret with your certificate password."
-                exit 1
+                echo "Creating unsigned app as fallback..."
+                cd dist
+                zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+                cd ..
+                echo "Unsigned ZIP file created successfully."
+                exit 0
               fi
             fi
           fi
@@ -270,6 +289,21 @@ jobs:
           
           echo "Finding certificate for signing..."
           security find-identity -v -p codesigning
+          
+          # If no valid signing identity could be imported, use ad-hoc signing
+          if ! security find-identity -v -p codesigning | grep -q "Developer ID"; then
+            echo "No valid Developer ID found after import attempts. Using ad-hoc signing instead."
+            echo "Signing the application with ad-hoc identity (no Apple verification)"
+            codesign --force --deep --sign - "dist/Image Renamer.app"
+            echo "Ad-hoc signing completed successfully"
+            
+            echo "Creating zip file for distribution..."
+            cd dist
+            zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+            cd ..
+            echo "ZIP file created successfully."
+            exit 0
+          fi
           
           # Sign the app
           echo "Signing the application with Developer ID: $MACOS_DEVELOPER_ID"
@@ -325,11 +359,13 @@ jobs:
           echo "ZIP file created successfully."
           
       - name: Create Unsigned ZIP Archive (Fallback)
-        if: env.MACOS_CERTIFICATE_BASE64 == ''
+        if: env.MACOS_CERTIFICATE_BASE64 == '' || failure()
         run: |
+          echo "Creating unsigned ZIP archive as fallback..."
           cd dist
           zip -r ../imagerenamer-macos.zip "Image Renamer.app"
           cd ..
+          echo "Unsigned ZIP file created successfully."
           
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
