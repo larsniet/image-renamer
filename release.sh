@@ -40,7 +40,7 @@ git pull
 
 # Run tests to ensure everything is working
 echo -e "\n${YELLOW}Running tests...${NC}"
-python -m pytest
+python3 -m pytest
 if [ $? -ne 0 ]; then
   echo -e "${RED}Tests failed. Fix the issues before releasing.${NC}"
   exit 1
