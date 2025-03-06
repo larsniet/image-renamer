@@ -185,6 +185,35 @@ This project uses GitHub Actions to automatically build and release packages for
    - Linux: Standalone executable (tarball)
 4. Python package is published to PyPI
 
+### Creating a New Release
+
+This project includes an automated release script to simplify the process:
+
+#### Using the Release Scripts
+
+**Only for macOS/Linux users:**
+```bash
+./release.sh 1.0.1
+```
+
+These scripts will:
+1. Ensure you're on the main branch
+2. Run tests to verify everything works
+3. Update the version number in the code
+4. Commit and push the version change
+5. Create and push a Git tag
+6. GitHub Actions will automatically build and publish the release
+
+#### Manual Release Process
+
+If you prefer to release manually:
+
+1. Update the version in `imagerenamer/__init__.py`
+2. Commit the change: `git commit -m "Bump version to X.Y.Z"`
+3. Push to main: `git push origin main`
+4. Create a tag: `git tag vX.Y.Z`
+5. Push the tag: `git push origin vX.Y.Z`
+
 ### Manual Installation from Releases
 
 You can download the latest binary release for your platform from the [Releases page](https://github.com/larsniet/image-renamer/releases).
