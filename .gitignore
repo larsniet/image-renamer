@@ -37,10 +37,6 @@ coverage.xml
 *~
 .DS_Store
 
-# Project-specific
-resources/icon.png
-resources/icon.ico
-
 # Generated executables and bundles
 *.exe
 *.spec
