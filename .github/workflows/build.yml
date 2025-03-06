@@ -17,14 +17,13 @@ jobs:
     steps:
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
+          generate_release_notes: true
           
   build-windows:
     needs: create-release
@@ -43,6 +42,15 @@ jobs:
           pip install -e .
           pip install pyinstaller pillow PyQt6
           
+      - name: Ensure resources directory
+        run: |
+          if (-not (Test-Path -Path "resources")) {
+            New-Item -ItemType Directory -Path "resources"
+          }
+          if (-not (Test-Path -Path "resources\icon.ico")) {
+            python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.ico')"
+          }
+          
       - name: Build with PyInstaller
         run: |
           pyinstaller --name=imagerenamer --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico imagerenamer/gui.py
@@ -52,14 +60,9 @@ jobs:
           Compress-Archive -Path dist\imagerenamer.exe -DestinationPath imagerenamer-windows.zip
           
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./imagerenamer-windows.zip
-          asset_name: imagerenamer-windows.zip
-          asset_content_type: application/zip
+          files: ./imagerenamer-windows.zip
           
   build-macos:
     needs: create-release
@@ -78,6 +81,13 @@ jobs:
           pip install -e .
           pip install pyinstaller pillow PyQt6
           
+      - name: Ensure resources directory
+        run: |
+          mkdir -p resources
+          if [ ! -f "resources/icon.png" ]; then
+            python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
+          fi
+          
       - name: Build with PyInstaller
         run: |
           pyinstaller --name=imagerenamer --onefile --windowed --add-data="LICENSE:." imagerenamer/gui.py
@@ -89,14 +99,9 @@ jobs:
           cd ..
           
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./imagerenamer-macos.zip
-          asset_name: imagerenamer-macos.zip
-          asset_content_type: application/zip
+          files: ./imagerenamer-macos.zip
           
   build-linux:
     needs: create-release
@@ -120,6 +125,13 @@ jobs:
           pip install -e .
           pip install pyinstaller pillow PyQt6
           
+      - name: Ensure resources directory
+        run: |
+          mkdir -p resources
+          if [ ! -f "resources/icon.png" ]; then
+            python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
+          fi
+          
       - name: Build with PyInstaller
         run: |
           pyinstaller --name=imagerenamer --onefile --add-data="LICENSE:." imagerenamer/gui.py
@@ -129,11 +141,6 @@ jobs:
           tar -czvf imagerenamer-linux.tar.gz -C dist imagerenamer
           
       - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@v1
         with:
-          upload_url: ${{ needs.create-release.outputs.upload_url }}
-          asset_path: ./imagerenamer-linux.tar.gz
-          asset_name: imagerenamer-linux.tar.gz
-          asset_content_type: application/gzip 
+          files: ./imagerenamer-linux.tar.gz 
