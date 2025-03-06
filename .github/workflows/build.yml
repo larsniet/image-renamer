@@ -280,8 +280,21 @@ jobs:
           cd ..
           echo "ZIP file created successfully."
       
+      - name: Debug Environment Variables
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
+          MACOS_APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
+          MACOS_APPLE_TEAM_ID: ${{ secrets.MACOS_APPLE_TEAM_ID }}
+        run: |
+          echo "Checking environment variables:"
+          echo "MACOS_CERTIFICATE_BASE64 is set: $([[ -n "$MACOS_CERTIFICATE_BASE64" ]] && echo 'YES' || echo 'NO')"
+          echo "MACOS_APPLE_ID is set: $([[ -n "$MACOS_APPLE_ID" ]] && echo 'YES' || echo 'NO')"
+          echo "MACOS_APPLE_PASSWORD is set: $([[ -n "$MACOS_APPLE_PASSWORD" ]] && echo 'YES' || echo 'NO')"
+          echo "MACOS_APPLE_TEAM_ID is set: $([[ -n "$MACOS_APPLE_TEAM_ID" ]] && echo 'YES' || echo 'NO')"
+          
       - name: Notarize App
-        if: env.MACOS_CERTIFICATE_BASE64 != '' && env.MACOS_APPLE_ID != '' && env.MACOS_APPLE_PASSWORD != '' && env.MACOS_APPLE_TEAM_ID != ''
+        if: secrets.MACOS_APPLE_ID != '' && secrets.MACOS_APPLE_PASSWORD != '' && secrets.MACOS_APPLE_TEAM_ID != ''
         env:
           MACOS_APPLE_ID: ${{ secrets.MACOS_APPLE_ID }}
           MACOS_APPLE_PASSWORD: ${{ secrets.MACOS_APPLE_PASSWORD }}
