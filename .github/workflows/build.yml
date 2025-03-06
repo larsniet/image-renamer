@@ -237,17 +237,17 @@ jobs:
           # First, try with provided password
           if [ -n "$MACOS_P12_PASSWORD" ]; then
             echo "Attempting import with provided password..."
-            if timeout 30s security import $RUNNER_TEMP/certificate.p12 -P "$MACOS_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+            if security import $RUNNER_TEMP/certificate.p12 -P "$MACOS_P12_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
               echo "Certificate imported successfully with provided password."
             else
               echo "Failed to import with provided password, will try empty password..."
               # Try with empty string password
-              if timeout 30s security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+              if security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
                 echo "Certificate imported successfully with empty string password."
               else
                 echo "Failed to import with empty password, will try no password..."
                 # Try with no password
-                if timeout 30s security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+                if security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
                   echo "Certificate imported successfully with no password."
                 else
                   echo "ERROR: All certificate import attempts failed."
@@ -263,13 +263,13 @@ jobs:
             fi
           else
             echo "No password provided, trying import without password..."
-            # Try without password (with 30 second timeout)
-            if timeout 30s security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+            # Try without password (without timeout)
+            if security import $RUNNER_TEMP/certificate.p12 -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
               echo "Certificate imported successfully with no password."
             else
               echo "Failed with no password, trying with empty string..."
               # Try with empty string
-              if timeout 30s security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
+              if security import $RUNNER_TEMP/certificate.p12 -P "" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH; then
                 echo "Certificate imported successfully with empty string password."
               else
                 echo "ERROR: Certificate import failed. Your certificate likely requires a password."
@@ -287,7 +287,8 @@ jobs:
           echo "Setting key partition list..."
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" $KEYCHAIN_PATH
           
-          echo "Finding certificate for signing..."
+          echo "Finding certificate for signing (available certificates)..."
+          security find-certificate -a -p $KEYCHAIN_PATH | openssl x509 -text | grep -A1 "Subject:" || echo "No certificates found in keychain"
           security find-identity -v -p codesigning
           
           # If no valid signing identity could be imported, use ad-hoc signing
