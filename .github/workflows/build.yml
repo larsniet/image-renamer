@@ -35,7 +35,7 @@ jobs:
             
             - **Windows**: Download `imagerenamer-windows.exe` and double-click to run
             - **macOS**: Download `imagerenamer-macos.zip`, extract and open the app
-              - ⚠️ **Security Warning**: When opening for the first time, right-click (or Ctrl+click) on "Image Renamer.app" and select "Open" from the menu. Then click "Open" in the security dialog.
+              - ⚠️ **Security Warning**: When opening for the first time, right-click (or Ctrl+click) on "Image Renamer.app" and select "Open" from the menu. Then click "Open" in the security dialog. This is required even though the app is properly signed and notarized.
             - **Linux**: Download `imagerenamer-linux` and run it from the terminal
               - Make executable first: `chmod +x imagerenamer-linux`
             
@@ -185,7 +185,7 @@ jobs:
                   'CFBundleShortVersionString': '${GITHUB_REF_NAME#v}',
                   'NSHighResolutionCapable': 'True',
                   'LSApplicationCategoryType': 'public.app-category.utilities',
-                  'NSHumanReadableCopyright': '© 2023 Lars Niet',
+                  'NSHumanReadableCopyright': '© 2023 Lars Niet'
               },
           )" > macOS.spec
           
@@ -276,23 +276,29 @@ jobs:
           echo '    <true/>' >> entitlements.plist
           echo '    <key>com.apple.security.cs.disable-executable-page-protection</key>' >> entitlements.plist
           echo '    <true/>' >> entitlements.plist
-          # Add file access entitlements for an image renaming app
+          # Only add the entitlement for user-selected files
           echo '    <key>com.apple.security.files.user-selected.read-write</key>' >> entitlements.plist
           echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.assets.pictures.read-write</key>' >> entitlements.plist
-          echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.files.downloads.read-write</key>' >> entitlements.plist
-          echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>' >> entitlements.plist
-          echo '    <array>' >> entitlements.plist
-          echo '        <string>/Pictures/</string>' >> entitlements.plist
-          echo '        <string>/Downloads/</string>' >> entitlements.plist
-          echo '    </array>' >> entitlements.plist
           echo '</dict>' >> entitlements.plist
           echo '</plist>' >> entitlements.plist
 
           # Sign the app
           echo "Signing app with Developer ID: $MACOS_DEVELOPER_ID"
+          # First, sign all dynamic libraries and binaries inside the app
+          find "dist/Image Renamer.app" -type f -name "*.dylib" -o -name "*.so" | while read file; do
+            echo "Signing binary component: $file"
+            codesign --force --options runtime --sign "$MACOS_DEVELOPER_ID" --timestamp "$file" || echo "Warning: Failed to sign $file"
+          done
+          
+          # Look for any other executable files like Python binary
+          find "dist/Image Renamer.app" -type f -perm +111 -not -path "*/\.*" | while read file; do
+            if file "$file" | grep -q "executable"; then
+              echo "Signing executable: $file"
+              codesign --force --options runtime --sign "$MACOS_DEVELOPER_ID" --timestamp "$file" || echo "Warning: Failed to sign $file"
+            fi
+          done
+          
+          # Finally sign the entire app with entitlements
           if ! codesign --force --options runtime --sign "$MACOS_DEVELOPER_ID" --timestamp --deep --entitlements entitlements.plist "dist/Image Renamer.app"; then
             echo "Code signing failed - falling back to ad-hoc signing"
             codesign --force --deep --sign - "dist/Image Renamer.app"
@@ -383,10 +389,18 @@ jobs:
             xcrun stapler staple "dist/Image Renamer.app"
             # Verify stapling was successful
             echo "Verifying staple was applied correctly..."
-            xcrun stapler validate "dist/Image Renamer.app"
+            xcrun stapler validate -v "dist/Image Renamer.app"
             # Check if the app is ready to run by querying its status
             echo "Checking final app status with spctl..."
             spctl --assess --verbose=4 --type exec "dist/Image Renamer.app" || echo "Warning: spctl verification failed, but continuing"
+            
+            # Additional verification and diagnostics
+            echo "Checking code signature details..."
+            codesign -dvv "dist/Image Renamer.app" || echo "Warning: Detailed verification failed, but continuing"
+            
+            echo "Verifying with strict assessment..."
+            spctl --assess --verbose=4 --type exec --context context:primary-signature "dist/Image Renamer.app" || echo "Warning: Strict verification failed, but continuing"
+            
             echo "Stapling complete!"
           else
             echo "Warning: Notarization failed. Will still create the zip file, but the app may show security warnings."
