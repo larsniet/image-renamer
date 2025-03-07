@@ -15,7 +15,7 @@ with open('README.md', 'r') as f:
     long_description = f.read()
 
 setup(
-    name="imagerenamer",
+    name="modern-image-renamer",
     version=version,
     author="Lars van der Niet",
     description="Rename image files based on their creation date from EXIF metadata",

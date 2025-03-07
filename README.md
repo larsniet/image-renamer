@@ -2,7 +2,7 @@
 
 [![Tests](https://github.com/larsniet/image-renamer/actions/workflows/tests.yml/badge.svg)](https://github.com/larsniet/image-renamer/actions/workflows/tests.yml)
 [![codecov](https://codecov.io/gh/larsniet/image-renamer/branch/main/graph/badge.svg)](https://codecov.io/gh/larsniet/image-renamer)
-[![PyPI version](https://badge.fury.io/py/imagerenamer.svg)](https://badge.fury.io/py/imagerenamer)
+[![PyPI version](https://badge.fury.io/py/modern-image-renamer.svg)](https://badge.fury.io/py/modern-image-renamer)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/larsniet/image-renamer)](https://github.com/larsniet/image-renamer/releases)
 
 A Python application that renames image and video files based on their creation date from metadata.
@@ -65,7 +65,7 @@ No installation is required - just download and run!
 ### From PyPI
 
 ```bash
-pip install imagerenamer
+pip install modern-image-renamer
 ```
 
 ## Usage
