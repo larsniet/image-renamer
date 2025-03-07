@@ -290,8 +290,19 @@ jobs:
           echo "Checking environment variables:"
           echo "MACOS_CERTIFICATE_BASE64 is set: $([[ -n "$MACOS_CERTIFICATE_BASE64" ]] && echo 'YES' || echo 'NO')"
           echo "MACOS_APPLE_ID is set: $([[ -n "$MACOS_APPLE_ID" ]] && echo 'YES' || echo 'NO')"
+          echo "  - First character: ${MACOS_APPLE_ID:0:1}"
+          echo "  - Last character: ${MACOS_APPLE_ID: -1}"
+          echo "  - Length: ${#MACOS_APPLE_ID}"
+          
           echo "MACOS_APPLE_PASSWORD is set: $([[ -n "$MACOS_APPLE_PASSWORD" ]] && echo 'YES' || echo 'NO')"
+          echo "  - First character: ${MACOS_APPLE_PASSWORD:0:1}"
+          echo "  - Last character: ${MACOS_APPLE_PASSWORD: -1}"
+          echo "  - Length: ${#MACOS_APPLE_PASSWORD}"
+          
           echo "MACOS_APPLE_TEAM_ID is set: $([[ -n "$MACOS_APPLE_TEAM_ID" ]] && echo 'YES' || echo 'NO')"
+          echo "  - First character: ${MACOS_APPLE_TEAM_ID:0:1}"
+          echo "  - Last character: ${MACOS_APPLE_TEAM_ID: -1}"
+          echo "  - Length: ${#MACOS_APPLE_TEAM_ID}"
           
       - name: Notarize App
         if: env.MACOS_APPLE_ID != '' && env.MACOS_APPLE_PASSWORD != '' && env.MACOS_APPLE_TEAM_ID != ''
@@ -395,4 +406,8 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            imagerenamer-linux 
+            imagerenamer-linux
+            
+
+
+
