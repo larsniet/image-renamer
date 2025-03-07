@@ -28,4 +28,18 @@ dependencies = [
 
 [project.scripts]
 imagerenamer = "imagerenamer.cli:main"
-imagerenamer-gui = "imagerenamer.gui:main" 
+imagerenamer-gui = "imagerenamer.gui:main"
+
+[tool.coverage.run]
+source = ["imagerenamer"]
+omit = ["imagerenamer/gui.py"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if __name__ == .__main__.:",
+    "pass",
+    "raise NotImplementedError",
+    "except ImportError"
+] 

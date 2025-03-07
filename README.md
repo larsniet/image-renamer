@@ -165,19 +165,28 @@ image-renamer/          # Project root
 ├── requirements.txt    # Dependencies
 ├── setup.py            # Package installation
 ├── pyproject.toml      # Modern Python packaging
+├── .coveragerc         # Coverage configuration
+├── pytest.ini          # pytest configuration
+├── release.sh          # Release automation script
+├── resources/          # Application resources
+│   └── icon.png        # Application icon
 ├── imagerenamer/       # Main package
-│   ├── __init__.py     # Package init
+│   ├── __init__.py     # Package init, version info
 │   ├── core.py         # Core functionality
 │   ├── cli.py          # Command-line interface
 │   └── gui.py          # GUI interface
-└── scripts/            # Entry points
-    ├── imagerenamer-cli
-    └── imagerenamer-gui
-└── tests/              # Test suite
-    ├── conftest.py     # pytest configuration
-    ├── test_core.py    # Core functionality tests
-    ├── test_cli.py     # CLI tests
-    └── test_gui.py     # GUI tests
+├── scripts/            # Entry points
+│   ├── imagerenamer-cli
+│   └── imagerenamer-gui
+├── tests/              # Test suite
+│   ├── conftest.py     # pytest configuration
+│   ├── test_core.py    # Core functionality tests
+│   ├── test_cli.py     # CLI tests
+│   └── test_gui.py     # GUI tests
+└── .github/workflows/  # CI/CD workflows
+    ├── build.yml       # Build workflow for releases
+    ├── publish.yml     # PyPI publishing workflow
+    └── tests.yml       # Testing workflow
 ```
 
 ## Running Tests
