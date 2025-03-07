@@ -17,6 +17,10 @@ from PyQt6.QtGui import QIcon, QFont, QPixmap, QColor, QPalette
 from imagerenamer.core import rename_images
 from imagerenamer import __version__
 
+# Define file extension constants
+image_extensions = (".jpg", ".jpeg", ".png", ".nef", ".cr2", ".arw")
+video_extensions = (".mp4", ".mov", ".avi", ".mkv", ".wmv", ".m4v", ".3gp", ".webm", ".flv")
+
 # Find the application resource path
 def resource_path(relative_path):
     """Get absolute path to resource, works for dev and for PyInstaller"""
@@ -33,11 +37,15 @@ class RenamerWorker(QThread):
     progress_update = pyqtSignal(str)
     completed = pyqtSignal(dict)
     
-    def __init__(self, folder_path, create_backup, format_string):
+    def __init__(self, folder_path, create_backup, format_string, remove_duplicates=False):
         super().__init__()
         self.folder_path = folder_path
         self.create_backup = create_backup
         self.format_string = format_string
+        self.remove_duplicates = remove_duplicates
+        
+        # Default to both image and video extensions
+        self.media_extensions = image_extensions + video_extensions
         
     def run(self):
         """Run the renaming process in a separate thread."""
@@ -46,12 +54,18 @@ class RenamerWorker(QThread):
         def update_callback(message):
             self.progress_update.emit(message)
         
+        # Custom filter function to pass to the core rename_images function
+        def file_filter(filename):
+            return filename.lower().endswith(self.media_extensions)
+        
         # Run the renaming process
         stats = rename_images(
             self.folder_path,
             self.create_backup,
             self.format_string,
-            update_callback
+            update_callback,
+            self.remove_duplicates,
+            file_filter
         )
         
         # Emit completion signal with statistics
@@ -225,7 +239,7 @@ class ImageRenamerApp(QMainWindow):
         title_label.setFont(title_font)
         
         description_label = QLabel(
-            "Rename your images based on their creation date from metadata."
+            "Rename your images and videos based on their creation date from metadata."
         )
         description_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         description_font = QFont()
@@ -233,12 +247,12 @@ class ImageRenamerApp(QMainWindow):
         description_label.setFont(description_font)
         
         # Directory selection
-        dir_group = QGroupBox("Image Directory")
+        dir_group = QGroupBox("Media Directory")
         dir_layout = QHBoxLayout()
         dir_layout.setContentsMargins(15, 20, 15, 15)
         
         self.dir_input = QLineEdit()
-        self.dir_input.setPlaceholderText("Select folder containing images...")
+        self.dir_input.setPlaceholderText("Select folder containing images and videos...")
         browse_btn = QPushButton("Browse...")
         browse_btn.clicked.connect(self.browse_directory)
         
@@ -272,9 +286,19 @@ class ImageRenamerApp(QMainWindow):
         self.backup_checkbox = QCheckBox("Create backups of original files")
         self.backup_checkbox.setChecked(True)
         
+        # Duplicate handling checkbox
+        self.remove_duplicates_checkbox = QCheckBox("Remove duplicates instead of renaming with suffixes")
+        self.remove_duplicates_checkbox.setChecked(False)
+        
+        # Media type selection checkbox
+        self.include_videos_checkbox = QCheckBox("Include video files (mp4, mov, avi, etc.)")
+        self.include_videos_checkbox.setChecked(True)
+        
         options_layout.addRow("Format:", self.format_dropdown)
         options_layout.addRow("Custom format:", self.custom_format)
         options_layout.addRow(self.backup_checkbox)
+        options_layout.addRow(self.remove_duplicates_checkbox)
+        options_layout.addRow(self.include_videos_checkbox)
         options_group.setLayout(options_layout)
         
         # Progress and log
@@ -334,17 +358,22 @@ class ImageRenamerApp(QMainWindow):
         
         if directory:
             self.dir_input.setText(directory)
-            # Count image files
-            image_count = self.count_image_files(directory)
-            self.statusBar().showMessage(f"Found {image_count} images in selected directory")
+            # Count media files
+            media_count = self.count_media_files(directory)
+            self.statusBar().showMessage(f"Found {media_count} media files in selected directory")
     
-    def count_image_files(self, directory):
-        """Count the number of image files in a directory."""
-        image_extensions = (".jpg", ".jpeg", ".png", ".nef", ".cr2", ".arw")
+    def count_media_files(self, directory):
+        """Count the number of image and video files in a directory."""
+        # Only include video extensions if the checkbox is checked
+        if hasattr(self, 'include_videos_checkbox') and self.include_videos_checkbox.isChecked():
+            media_extensions = image_extensions + video_extensions
+        else:
+            media_extensions = image_extensions
+            
         count = 0
         
         for file in os.listdir(directory):
-            if file.lower().endswith(image_extensions) and os.path.isfile(os.path.join(directory, file)):
+            if file.lower().endswith(media_extensions) and os.path.isfile(os.path.join(directory, file)):
                 count += 1
                 
         return count
@@ -365,6 +394,8 @@ class ImageRenamerApp(QMainWindow):
             format_string = self.format_dropdown.currentData()
         
         create_backup = self.backup_checkbox.isChecked()
+        remove_duplicates = self.remove_duplicates_checkbox.isChecked()
+        include_videos = self.include_videos_checkbox.isChecked()
         
         # Clear log and show progress bar
         self.log_output.clear()
@@ -375,7 +406,14 @@ class ImageRenamerApp(QMainWindow):
         self.toggle_inputs(False)
         
         # Create and start worker thread
-        self.worker = RenamerWorker(directory, create_backup, format_string)
+        self.worker = RenamerWorker(directory, create_backup, format_string, remove_duplicates)
+        
+        # Set the file extensions to use
+        if include_videos:
+            self.worker.media_extensions = image_extensions + video_extensions
+        else:
+            self.worker.media_extensions = image_extensions
+            
         self.worker.progress_update.connect(self.update_log)
         self.worker.completed.connect(self.process_completed)
         self.worker.start()
@@ -411,6 +449,9 @@ class ImageRenamerApp(QMainWindow):
         self.update_log(f"Files renamed: {stats['renamed']}")
         self.update_log(f"Files skipped: {stats['skipped']}")
         
+        if 'removed_duplicates' in stats and stats['removed_duplicates'] > 0:
+            self.update_log(f"Duplicates removed: {stats['removed_duplicates']}")
+        
         if stats['renamed'] > 0:
             self.update_log("\n✅ Renaming completed successfully!")
         else:
@@ -420,8 +461,11 @@ class ImageRenamerApp(QMainWindow):
         self.statusBar().showMessage(f"Completed: {stats['renamed']} files renamed, {stats['skipped']} skipped")
         
         # Show completion dialog
-        QMessageBox.information(self, "Process Complete", 
-                              f"Renaming completed!\n\n{stats['renamed']} files renamed\n{stats['skipped']} files skipped")
+        summary_text = f"Renaming completed!\n\n{stats['renamed']} files renamed\n{stats['skipped']} files skipped"
+        if 'removed_duplicates' in stats and stats['removed_duplicates'] > 0:
+            summary_text += f"\n{stats['removed_duplicates']} duplicates removed"
+            
+        QMessageBox.information(self, "Process Complete", summary_text)
     
     def toggle_inputs(self, enabled):
         """Enable or disable input controls."""
@@ -429,6 +473,8 @@ class ImageRenamerApp(QMainWindow):
         self.format_dropdown.setEnabled(enabled)
         self.custom_format.setEnabled(enabled)
         self.backup_checkbox.setEnabled(enabled)
+        self.remove_duplicates_checkbox.setEnabled(enabled)
+        self.include_videos_checkbox.setEnabled(enabled)
         self.start_btn.setEnabled(enabled)
         self.cancel_btn.setEnabled(not enabled)
     
@@ -438,6 +484,8 @@ class ImageRenamerApp(QMainWindow):
         self.settings.setValue("format_index", self.format_dropdown.currentIndex())
         self.settings.setValue("custom_format", self.custom_format.text())
         self.settings.setValue("create_backup", self.backup_checkbox.isChecked())
+        self.settings.setValue("remove_duplicates", self.remove_duplicates_checkbox.isChecked())
+        self.settings.setValue("include_videos", self.include_videos_checkbox.isChecked())
     
     def load_settings(self):
         """Load application settings."""
@@ -445,11 +493,15 @@ class ImageRenamerApp(QMainWindow):
         format_index = int(self.settings.value("format_index", 0))
         custom_format = self.settings.value("custom_format", "")
         create_backup = self.settings.value("create_backup", True, type=bool)
+        remove_duplicates = self.settings.value("remove_duplicates", False, type=bool)
+        include_videos = self.settings.value("include_videos", True, type=bool)
         
         self.dir_input.setText(directory)
         self.format_dropdown.setCurrentIndex(format_index)
         self.custom_format.setText(custom_format)
         self.backup_checkbox.setChecked(create_backup)
+        self.remove_duplicates_checkbox.setChecked(remove_duplicates)
+        self.include_videos_checkbox.setChecked(include_videos)
     
     def closeEvent(self, event):
         """Handle window close event."""
