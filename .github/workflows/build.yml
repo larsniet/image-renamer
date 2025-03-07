@@ -192,6 +192,16 @@ jobs:
           
       - name: Prepare Windows Distribution
         run: |
+          # NOTE: For a truly trusted Windows application, you'll need to implement code signing.
+          # Without code signing, Windows SmartScreen and antivirus software will likely continue
+          # to flag your application regardless of the PyInstaller version or packaging method.
+          # 
+          # To implement code signing, you would:
+          # 1. Purchase a code signing certificate from a trusted Certificate Authority
+          # 2. Add a step to sign the executable using signtool.exe
+          # 3. This would typically use commands like:
+          #    signtool.exe sign /tr http://timestamp.digicert.com /td sha256 /fd sha256 /f MyCertificate.pfx /p CertPassword "dist\Image Renamer.exe"
+          
           # Create a directory for the distribution
           $DistDir = "imagerenamer-windows"
           New-Item -ItemType Directory -Path $DistDir -Force
@@ -214,10 +224,33 @@ jobs:
           © 2023 Lars van der Niet
           " > "$DistDir\README.txt"
           
-          # Create a simple loader batch script that opens the app
+          # Create a portable installer script
+          echo "@echo off
+          echo Installing Image Renamer...
+          
+          REM Create a desktop shortcut
+          echo Set oWS = WScript.CreateObject(\"WScript.Shell\") > CreateShortcut.vbs
+          echo sLinkFile = oWS.SpecialFolders(\"Desktop\") ^& \"\\Image Renamer.lnk\" >> CreateShortcut.vbs
+          echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
+          echo oLink.TargetPath = \"%~dp0Image Renamer.exe\" >> CreateShortcut.vbs
+          echo oLink.WorkingDirectory = \"%~dp0\" >> CreateShortcut.vbs
+          echo oLink.Description = \"Image Renamer - Rename images based on EXIF data\" >> CreateShortcut.vbs
+          echo oLink.IconLocation = \"%~dp0Image Renamer.exe,0\" >> CreateShortcut.vbs
+          echo oLink.Save >> CreateShortcut.vbs
+          cscript //nologo CreateShortcut.vbs
+          del CreateShortcut.vbs
+          
+          echo Image Renamer has been installed! A shortcut has been placed on your desktop.
+          echo.
+          echo Press any key to launch the application...
+          pause > nul
+          start \"\" \"Image Renamer.exe\"
+          " > "$DistDir\Install.bat"
+          
+          # Create a simple batch file to run without installation
           echo "@echo off
           start \"\" \"Image Renamer.exe\"
-          " > "$DistDir\Start Image Renamer.bat"
+          " > "$DistDir\Run Image Renamer.bat"
           
           # Create the ZIP file
           Compress-Archive -Path "$DistDir\*" -DestinationPath "imagerenamer-windows.zip" -Force
