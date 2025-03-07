@@ -274,16 +274,20 @@ jobs:
           echo '    <true/>' >> entitlements.plist
           echo '    <key>com.apple.security.cs.disable-library-validation</key>' >> entitlements.plist
           echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.cs.allow-dyld-environment-variables</key>' >> entitlements.plist
-          echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.automation.apple-events</key>' >> entitlements.plist
-          echo '    <true/>' >> entitlements.plist
           echo '    <key>com.apple.security.cs.disable-executable-page-protection</key>' >> entitlements.plist
           echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.get-task-allow</key>' >> entitlements.plist
+          # Add file access entitlements for an image renaming app
+          echo '    <key>com.apple.security.files.user-selected.read-write</key>' >> entitlements.plist
           echo '    <true/>' >> entitlements.plist
-          echo '    <key>com.apple.security.inherit</key>' >> entitlements.plist
+          echo '    <key>com.apple.security.assets.pictures.read-write</key>' >> entitlements.plist
           echo '    <true/>' >> entitlements.plist
+          echo '    <key>com.apple.security.files.downloads.read-write</key>' >> entitlements.plist
+          echo '    <true/>' >> entitlements.plist
+          echo '    <key>com.apple.security.temporary-exception.files.home-relative-path.read-write</key>' >> entitlements.plist
+          echo '    <array>' >> entitlements.plist
+          echo '        <string>/Pictures/</string>' >> entitlements.plist
+          echo '        <string>/Downloads/</string>' >> entitlements.plist
+          echo '    </array>' >> entitlements.plist
           echo '</dict>' >> entitlements.plist
           echo '</plist>' >> entitlements.plist
 
@@ -298,11 +302,11 @@ jobs:
           codesign --verify --verbose "dist/Image Renamer.app" || echo "Verification failed, but continuing"
           
           # Create final zip
-          echo "Creating final zip file..."
+          echo "Creating final distributable ZIP..."
           cd dist
-          zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+          ditto -c -k --keepParent "Image Renamer.app" "../imagerenamer-macos.zip"
           cd ..
-          echo "ZIP file created successfully."
+          echo "ZIP file created successfully with all permissions and attributes preserved."
       
       - name: Debug Environment Variables
         env:
@@ -347,12 +351,15 @@ jobs:
           ditto -c -k --keepParent "dist/Image Renamer.app" "Image Renamer.zip"
           
           echo "Submitting app for notarization with Team ID: $MACOS_APPLE_TEAM_ID"
-          SUBMISSION_ID=$(xcrun notarytool submit "Image Renamer.zip" \
+          # Submit for notarization and wait for completion
+          xcrun notarytool submit "Image Renamer.zip" \
             --apple-id "$MACOS_APPLE_ID" \
             --password "$MACOS_APPLE_PASSWORD" \
             --team-id "$MACOS_APPLE_TEAM_ID" \
-            --wait | grep "id:" | head -1 | awk '{print $2}')
-            
+            --wait > notarization_output.txt
+
+          # Extract submission ID
+          SUBMISSION_ID=$(cat notarization_output.txt | grep "id:" | head -1 | awk '{print $2}')
           echo "Notarization completed with submission ID: $SUBMISSION_ID"
           
           # Get detailed log information
@@ -360,7 +367,9 @@ jobs:
           xcrun notarytool log "$SUBMISSION_ID" \
             --apple-id "$MACOS_APPLE_ID" \
             --password "$MACOS_APPLE_PASSWORD" \
-            --team-id "$MACOS_APPLE_TEAM_ID"
+            --team-id "$MACOS_APPLE_TEAM_ID" > notarization_log.txt
+            
+          cat notarization_log.txt
           
           # Check the notarization status
           NOTARIZE_STATUS=$(xcrun notarytool info "$SUBMISSION_ID" \
@@ -370,7 +379,14 @@ jobs:
           
           if [ "$NOTARIZE_STATUS" = "Accepted" ]; then
             echo "Notarization succeeded! Stapling notarization ticket to the app..."
+            # Staple the ticket to the app
             xcrun stapler staple "dist/Image Renamer.app"
+            # Verify stapling was successful
+            echo "Verifying staple was applied correctly..."
+            xcrun stapler validate "dist/Image Renamer.app"
+            # Check if the app is ready to run by querying its status
+            echo "Checking final app status with spctl..."
+            spctl --assess --verbose=4 --type exec "dist/Image Renamer.app" || echo "Warning: spctl verification failed, but continuing"
             echo "Stapling complete!"
           else
             echo "Warning: Notarization failed. Will still create the zip file, but the app may show security warnings."
@@ -378,18 +394,18 @@ jobs:
           
           echo "Creating final distributable ZIP..."
           cd dist
-          zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+          ditto -c -k --keepParent "Image Renamer.app" "../imagerenamer-macos.zip"
           cd ..
-          echo "ZIP file created successfully."
+          echo "ZIP file created successfully with all permissions and attributes preserved."
           
       - name: Create Unsigned ZIP Archive (Fallback)
         if: env.MACOS_CERTIFICATE_BASE64 == '' || failure()
         run: |
           echo "Creating unsigned ZIP archive as fallback..."
           cd dist
-          zip -r ../imagerenamer-macos.zip "Image Renamer.app"
+          ditto -c -k --keepParent "Image Renamer.app" "../imagerenamer-macos.zip"
           cd ..
-          echo "Unsigned ZIP file created successfully."
+          echo "Unsigned ZIP file created successfully with all permissions and attributes preserved."
           
       - name: Upload Release Asset
         uses: softprops/action-gh-release@v1
