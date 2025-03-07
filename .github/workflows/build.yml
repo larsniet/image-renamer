@@ -69,8 +69,8 @@ jobs:
             # Use a fallback icon if the new logo doesn't exist
             python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.ico')"
           } else {
-            # Convert the PNG to ICO format for Windows
-            python -c "from PIL import Image; img = Image.open('resources/icon.png').resize((256, 256)); img.save('resources/icon.ico')"
+            # Resize the icon to ensure consistent size
+            python -c "from PIL import Image; img = Image.open('resources/icon.png'); img = img.resize((256, 256), Image.LANCZOS); img.save('resources/icon.ico')"
           }
           
       - name: Build with PyInstaller
@@ -112,18 +112,22 @@ jobs:
             # Create a fallback icon if it doesn't exist
             python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
           fi
+          
+          # Resize the icon to 1024x1024 to ensure consistent size
+          python -c "from PIL import Image; img = Image.open('resources/icon.png'); img = img.resize((1024, 1024), Image.LANCZOS); img.save('resources/icon_resized.png')"
+          
           # Convert PNG to ICNS format for better macOS integration
           mkdir -p macOS.iconset
-          sips -z 16 16     resources/icon.png --out macOS.iconset/icon_16x16.png
-          sips -z 32 32     resources/icon.png --out macOS.iconset/icon_16x16@2x.png
-          sips -z 32 32     resources/icon.png --out macOS.iconset/icon_32x32.png
-          sips -z 64 64     resources/icon.png --out macOS.iconset/icon_32x32@2x.png
-          sips -z 128 128   resources/icon.png --out macOS.iconset/icon_128x128.png
-          sips -z 256 256   resources/icon.png --out macOS.iconset/icon_128x128@2x.png
-          sips -z 256 256   resources/icon.png --out macOS.iconset/icon_256x256.png
-          sips -z 512 512   resources/icon.png --out macOS.iconset/icon_256x256@2x.png
-          sips -z 512 512   resources/icon.png --out macOS.iconset/icon_512x512.png
-          sips -z 1024 1024 resources/icon.png --out macOS.iconset/icon_512x512@2x.png
+          sips -z 16 16     resources/icon_resized.png --out macOS.iconset/icon_16x16.png
+          sips -z 32 32     resources/icon_resized.png --out macOS.iconset/icon_16x16@2x.png
+          sips -z 32 32     resources/icon_resized.png --out macOS.iconset/icon_32x32.png
+          sips -z 64 64     resources/icon_resized.png --out macOS.iconset/icon_32x32@2x.png
+          sips -z 128 128   resources/icon_resized.png --out macOS.iconset/icon_128x128.png
+          sips -z 256 256   resources/icon_resized.png --out macOS.iconset/icon_128x128@2x.png
+          sips -z 256 256   resources/icon_resized.png --out macOS.iconset/icon_256x256.png
+          sips -z 512 512   resources/icon_resized.png --out macOS.iconset/icon_256x256@2x.png
+          sips -z 512 512   resources/icon_resized.png --out macOS.iconset/icon_512x512.png
+          sips -z 1024 1024 resources/icon_resized.png --out macOS.iconset/icon_512x512@2x.png
           iconutil -c icns macOS.iconset -o resources/icon.icns
           
       - name: Build with PyInstaller
@@ -459,6 +463,10 @@ jobs:
           if [ ! -f "resources/icon.png" ]; then
             # Create a fallback icon if it doesn't exist
             python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
+          else
+            # Resize the icon to ensure consistent size for Linux
+            python -c "from PIL import Image; img = Image.open('resources/icon.png'); img = img.resize((256, 256), Image.LANCZOS); img.save('resources/icon_256.png')"
+            mv resources/icon_256.png resources/icon.png
           fi
           
       - name: Build with PyInstaller
