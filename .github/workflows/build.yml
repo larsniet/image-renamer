@@ -58,7 +58,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e .
-          pip install pyinstaller pillow PyQt6
+          pip install pyinstaller==5.13.2 pillow PyQt6
           
       - name: Ensure resources directory
         run: |
@@ -72,19 +72,89 @@ jobs:
             # Resize the icon to ensure consistent size
             python -c "from PIL import Image; img = Image.open('resources/icon.png'); img = img.resize((256, 256), Image.LANCZOS); img.save('resources/icon.ico')"
           }
+      
+      - name: Create Application Manifest
+        run: |
+          # Create a proper application manifest
+          echo '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+          <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
+            <assemblyIdentity
+              version="1.0.0.0"
+              processorArchitecture="*"
+              name="ImageRenamer"
+              type="win32"
+            />
+            <description>Image Renamer - Rename images based on date</description>
+            <trustInfo xmlns="urn:schemas-microsoft-com:asm.v3">
+              <security>
+                <requestedPrivileges>
+                  <requestedExecutionLevel level="asInvoker" uiAccess="false"/>
+                </requestedPrivileges>
+              </security>
+            </trustInfo>
+            <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+              <application>
+                <!-- Windows 10 and 11 -->
+                <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+                <!-- Windows 8.1 -->
+                <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
+                <!-- Windows 8 -->
+                <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
+                <!-- Windows 7 -->
+                <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
+              </application>
+            </compatibility>
+          </assembly>' > app.manifest
           
       - name: Build with PyInstaller
         run: |
-          # Use multiple flags to reduce antivirus triggers
-          # --clean removes cached files that might trigger security warnings
-          # --noupx avoids compression which is a common trigger for antivirus
-          # Note: Removed --win-private-assemblies as it's no longer supported in PyInstaller v6.0
-          # Note: Removed --win-no-prefer-redirects as it might also be unsupported
-          # --name with a more professional name
-          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --noupx imagerenamer/gui.py
+          # Create a detailed spec file rather than command line options
+          echo "# -*- mode: python ; coding: utf-8 -*-
           
-      - name: Prepare Assets
-        run: |
+          block_cipher = None
+          
+          a = Analysis(
+              ['imagerenamer/gui.py'],
+              pathex=[],
+              binaries=[],
+              datas=[('LICENSE', '.')],
+              hiddenimports=[],
+              hookspath=[],
+              hooksconfig={},
+              runtime_hooks=[],
+              excludes=['numpy', 'pandas', 'matplotlib', 'scipy', 'tk', 'tkinter'],
+              cipher=block_cipher,
+              noarchive=False,
+          )
+          
+          pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
+          
+          exe = EXE(
+              pyz,
+              a.scripts,
+              a.binaries,
+              a.zipfiles,
+              a.datas,
+              [],
+              name='Image Renamer',
+              debug=False,
+              bootloader_ignore_signals=False,
+              strip=False,
+              upx=False,
+              upx_exclude=[],
+              runtime_tmpdir=None,
+              console=False,
+              disable_windowed_traceback=False,
+              argv_emulation=False,
+              target_arch=None,
+              codesign_identity=None,
+              entitlements_file=None,
+              icon='resources/icon.ico',
+              version='version_info.txt',
+              manifest='app.manifest',
+          )
+          " > windows.spec
+          
           # Add a version resource file with proper company information
           # This makes the executable look more legitimate to Windows
           echo 'VSVersionInfo(
@@ -116,17 +186,67 @@ jobs:
             ]
           )' > version_info.txt
           
-          # Rebuild with version info
-          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --noupx --version-file=version_info.txt imagerenamer/gui.py
+          # Build using the spec file
+          pyinstaller --clean windows.spec
           
-          # Make a copy with a more descriptive name
-          Copy-Item -Path "dist\Image Renamer.exe" -Destination "imagerenamer-windows.exe"
+      - name: Create Verification Resources
+        run: |
+          # Generate checksums for the executable
+          mkdir -p verification
+          $md5 = Get-FileHash -Path "dist\Image Renamer.exe" -Algorithm MD5
+          $sha1 = Get-FileHash -Path "dist\Image Renamer.exe" -Algorithm SHA1
+          $sha256 = Get-FileHash -Path "dist\Image Renamer.exe" -Algorithm SHA256
           
+          echo "# Image Renamer - File Verification
+          
+          This file contains verification checksums for the Image Renamer executable.
+          
+          ## File Information
+          - Filename: Image Renamer.exe
+          - Version: ${GITHUB_REF_NAME#v}
+          - Release Date: $(Get-Date -Format "yyyy-MM-dd")
+          - Developer: Lars van der Niet
+          
+          ## Checksums
+          - MD5: $($md5.Hash)
+          - SHA1: $($sha1.Hash)
+          - SHA256: $($sha256.Hash)
+          
+          This application is an open-source utility for renaming image files based on their EXIF data.
+          The source code is available at: https://github.com/larsniet/image-renamer
+          " > verification\VERIFICATION.md
+          
+          # Create README with safety instructions
+          echo "# Image Renamer
+          
+          ## Antivirus Notice
+          
+          Some antivirus programs may flag this application as suspicious. This is a false positive due to the way the application is packaged.
+          
+          This is a legitimate, open-source application for renaming image files. The source code is available at:
+          https://github.com/larsniet/image-renamer
+          
+          ## Verification
+          
+          To verify the integrity of this file, please check the checksums in the VERIFICATION.md file.
+          
+          ## Usage
+          
+          Simply double-click Image Renamer.exe to launch the application.
+          
+          " > verification\README.md
+          
+          # Add the verification files to the distribution
+          Copy-Item -Path "verification\*" -Destination "dist\"
+          
+          # Create a clean ZIP package rather than just an EXE 
+          Compress-Archive -Path "dist\Image Renamer.exe", "dist\VERIFICATION.md", "dist\README.md" -DestinationPath "imagerenamer-windows.zip" -Force
+                    
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            imagerenamer-windows.exe
+            imagerenamer-windows.zip
           
   build-macos:
     needs: create-release
@@ -160,9 +280,9 @@ jobs:
           # Load the original image
           img = Image.open('resources/icon.png')
           
-          # Calculate target size with 15% padding on each side
-          target_size = 512
-          padding_percent = 0.15
+          # Calculate target size with 10% padding on each side (reduced from 15%)
+          target_size = 1024  # High resolution for Retina displays
+          padding_percent = 0.10
           padding_pixels = int(target_size * padding_percent)
           content_size = target_size - (padding_pixels * 2)
           
@@ -201,8 +321,9 @@ jobs:
           sips -z 256 256   resources/icon_padded.png --out macOS.iconset/icon_128x128@2x.png
           sips -z 256 256   resources/icon_padded.png --out macOS.iconset/icon_256x256.png
           sips -z 512 512   resources/icon_padded.png --out macOS.iconset/icon_256x256@2x.png
-          # Use the padded image for the largest size
-          cp resources/icon_padded.png macOS.iconset/icon_512x512.png
+          sips -z 512 512   resources/icon_padded.png --out macOS.iconset/icon_512x512.png
+          # Use the full-sized padded image for the largest Retina size (512@2x = 1024)
+          cp resources/icon_padded.png macOS.iconset/icon_512x512@2x.png
           # Generate the final ICNS file
           iconutil -c icns macOS.iconset -o resources/icon.icns
           
