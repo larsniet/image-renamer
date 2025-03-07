@@ -42,7 +42,8 @@ The easiest way to get started is to download the pre-built executable for your 
 
 1. Go to the [Releases page](https://github.com/larsniet/image-renamer/releases/latest)
 2. Download the appropriate file for your system:
-   - **Windows**: Download `imagerenamer-windows.exe`
+   - **Windows**: Download `imagerenamer-windows.exe` and double-click to run
+     - **Note on Windows Security**: Some antivirus software (including Windows Defender) may flag the Windows executable as suspicious. This is a common false positive for Python applications packaged with PyInstaller. See [Windows Security Note](#windows-security-note) below for details.
    - **macOS**: Download `imagerenamer-macos.zip`, extract and open the app
      - **Important**: When first opening the app, you may see a security warning. Instead of clicking the app directly, right-click (or Ctrl+click) on it and select "Open" from the menu. When prompted, click "Open" again. You only need to do this once.
    - **Linux**: Download `imagerenamer-linux`, make it executable with `chmod +x imagerenamer-linux`, and run it
@@ -267,3 +268,29 @@ You can download the latest binary release for your platform from the [Releases 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Troubleshooting
+
+### Windows Security Note
+
+Some Windows security software, including Windows Defender, may flag the Windows executable (`imagerenamer-windows.exe`) as potentially unwanted. This is a **false positive** that commonly occurs with Python applications packaged using PyInstaller.
+
+If you encounter this issue, you have several options:
+
+1. **Unblock the file**:
+   - Right-click on the downloaded file
+   - Select "Properties"
+   - Check the "Unblock" checkbox at the bottom of the Properties dialog
+   - Click "Apply" and "OK"
+
+2. **Add an exclusion in Windows Defender**:
+   - Open Windows Security
+   - Go to "Virus & threat protection settings"
+   - Under "Exclusions," click "Add or remove exclusions"
+   - Add an exclusion for the file or folder
+
+3. **Alternative installation methods**:
+   - Install from PyPI: `pip install modern-image-renamer`
+   - Clone and run from source (see [From Source](#from-source) section)
+
+This application is open-source, and all code can be inspected in the GitHub repository. The executable is built automatically by GitHub Actions from the source code without any modifications.

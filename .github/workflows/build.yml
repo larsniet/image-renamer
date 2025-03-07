@@ -75,12 +75,53 @@ jobs:
           
       - name: Build with PyInstaller
         run: |
-          pyinstaller --name=imagerenamer --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico imagerenamer/gui.py
+          # Use multiple flags to reduce antivirus triggers
+          # --clean removes cached files that might trigger security warnings
+          # --uac-admin=false avoids admin prompts
+          # --noupx avoids compression which is a common trigger for antivirus
+          # --win-private-assemblies helps avoid DLL issues
+          # --win-no-prefer-redirects helps with import behavior
+          # --name with a more professional name
+          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --uac-admin=false --noupx --win-private-assemblies --win-no-prefer-redirects imagerenamer/gui.py
           
       - name: Prepare Assets
         run: |
+          # Add a version resource file with proper company information
+          # This makes the executable look more legitimate to Windows
+          echo 'VSVersionInfo(
+            ffi=FixedFileInfo(
+              filevers=(1, 0, 0, 0),
+              prodvers=(1, 0, 0, 0),
+              mask=0x3f,
+              flags=0x0,
+              OS=0x40004,
+              fileType=0x1,
+              subtype=0x0,
+              date=(0, 0)
+            ),
+            kids=[
+              StringFileInfo(
+                [
+                  StringTable(
+                    "040904B0",
+                    [StringStruct("CompanyName", "Lars van der Niet"),
+                    StringStruct("FileDescription", "Image Renamer - Rename images based on EXIF data"),
+                    StringStruct("FileVersion", "${GITHUB_REF_NAME#v}"),
+                    StringStruct("InternalName", "Image Renamer"),
+                    StringStruct("LegalCopyright", "© 2023 Lars van der Niet"),
+                    StringStruct("OriginalFilename", "Image Renamer.exe"),
+                    StringStruct("ProductName", "Image Renamer"),
+                    StringStruct("ProductVersion", "${GITHUB_REF_NAME#v}")])
+                ]), 
+              VarFileInfo([VarStruct("Translation", [0x409, 1200])])
+            ]
+          )' > version_info.txt
+          
+          # Rebuild with version info
+          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --uac-admin=false --noupx --win-private-assemblies --win-no-prefer-redirects --version-file=version_info.txt imagerenamer/gui.py
+          
           # Make a copy with a more descriptive name
-          Copy-Item -Path "dist\imagerenamer.exe" -Destination "imagerenamer-windows.exe"
+          Copy-Item -Path "dist\Image Renamer.exe" -Destination "imagerenamer-windows.exe"
           
       - name: Upload Release Assets
         uses: softprops/action-gh-release@v1
@@ -113,10 +154,9 @@ jobs:
             python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
           fi
           
-          # Resize and add padding to the icon
+          # Resize and add padding to the icon - no numpy dependency
           python -c "
           from PIL import Image
-          import numpy as np
           
           # Load the original image
           img = Image.open('resources/icon.png')
@@ -359,6 +399,7 @@ jobs:
           cd ..
           echo "ZIP file created successfully with all permissions and attributes preserved."
       
+      
       - name: Debug Environment Variables
         env:
           MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
@@ -456,7 +497,7 @@ jobs:
           ditto -c -k --keepParent "Image Renamer.app" "../imagerenamer-macos.zip"
           cd ..
           echo "ZIP file created successfully with all permissions and attributes preserved."
-          
+      
       - name: Create Unsigned ZIP Archive (Fallback)
         if: env.MACOS_CERTIFICATE_BASE64 == '' || failure()
         run: |
@@ -470,7 +511,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           files: |
-            imagerenamer-macos.zip
+            imagerenamer-macos.zip       
           
   build-linux:
     needs: create-release
