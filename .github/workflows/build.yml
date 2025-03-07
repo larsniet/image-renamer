@@ -78,11 +78,10 @@ jobs:
           # Use multiple flags to reduce antivirus triggers
           # --clean removes cached files that might trigger security warnings
           # --noupx avoids compression which is a common trigger for antivirus
-          # --win-private-assemblies helps avoid DLL issues
-          # --win-no-prefer-redirects helps with import behavior
+          # Note: Removed --win-private-assemblies as it's no longer supported in PyInstaller v6.0
+          # Note: Removed --win-no-prefer-redirects as it might also be unsupported
           # --name with a more professional name
-          # Note: Omit --uac-admin entirely to avoid admin privileges
-          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --noupx --win-private-assemblies --win-no-prefer-redirects imagerenamer/gui.py
+          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --noupx imagerenamer/gui.py
           
       - name: Prepare Assets
         run: |
@@ -118,7 +117,7 @@ jobs:
           )' > version_info.txt
           
           # Rebuild with version info
-          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --noupx --win-private-assemblies --win-no-prefer-redirects --version-file=version_info.txt imagerenamer/gui.py
+          pyinstaller --name="Image Renamer" --onefile --windowed --add-data="LICENSE;." --icon=resources/icon.ico --clean --noupx --version-file=version_info.txt imagerenamer/gui.py
           
           # Make a copy with a more descriptive name
           Copy-Item -Path "dist\Image Renamer.exe" -Destination "imagerenamer-windows.exe"
