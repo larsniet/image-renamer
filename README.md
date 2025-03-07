@@ -5,20 +5,22 @@
 [![PyPI version](https://badge.fury.io/py/imagerenamer.svg)](https://badge.fury.io/py/imagerenamer)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/larsniet/image-renamer)](https://github.com/larsniet/image-renamer/releases)
 
-A Python application that renames image files based on their creation date from EXIF metadata.
+A Python application that renames image and video files based on their creation date from metadata.
 
 ## Problem Solved
 
-Digital cameras often reset their file numbering when SD cards are formatted, making it difficult to organize photos chronologically. This application automatically renames all images in a folder using their creation date and time from the metadata.
+Digital cameras often reset their file numbering when SD cards are formatted, making it difficult to organize photos chronologically. This application automatically renames all images and videos in a folder using their creation date and time from the metadata.
 
 ## Features
 
 - Renames image files using the creation date from EXIF metadata
+- Optional support for video files (mp4, mov, avi, etc.)
 - Falls back to file creation time if no EXIF data is available
 - Supports JPG, JPEG, PNG, NEF, CR2, and ARW file formats
 - Optional backup of original files
 - Customizable filename format
 - Prevents duplicate filenames by adding a counter
+- Option to remove duplicate files instead of renaming them
 - Beautiful and user-friendly GUI interface
 - Remembers your previous settings
 
@@ -116,11 +118,25 @@ With custom filename format:
 imagerenamer /path/to/images --format "%Y%m%d_%H%M%S"
 ```
 
+Including video files:
+
+```bash
+imagerenamer /path/to/images --include-videos
+```
+
+Removing duplicates instead of renaming them:
+
+```bash
+imagerenamer /path/to/images --remove-duplicates
+```
+
 ### Command Line Arguments
 
 - `folder`: Path to the folder containing images (required)
 - `-b, --backup`: Create backup of original files
 - `-f, --format`: Format string for the new filename (default: '%Y-%m-%d_%H-%M-%S')
+- `-r, --remove-duplicates`: Remove duplicates instead of renaming them with suffixes
+- `--include-videos`: Include video files (mp4, mov, avi, etc.) in addition to images
 - `-v, --version`: Show version information and exit
 
 ## Format String Options
@@ -241,4 +257,4 @@ You can download the latest binary release for your platform from the [Releases 
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. 
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
