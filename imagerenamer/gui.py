@@ -192,24 +192,16 @@ class ImageRenamerApp(QMainWindow):
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
         else:
-            # If icon file is missing, create a simple default icon on the fly
-            try:
-                from PIL import Image, ImageDraw
-                import tempfile
-                
-                # Create a temporary directory for the icon
-                tmp_dir = tempfile.gettempdir()
-                temp_icon_path = os.path.join(tmp_dir, "imagerenamer_icon.png")
-                
-                # Create a simple icon
-                img = Image.new('RGB', (64, 64), color=(13, 99, 156))
-                img.save(temp_icon_path)
-                
-                # Use the temporary icon
-                self.setWindowIcon(QIcon(temp_icon_path))
-            except Exception:
-                # Silently fail if we can't create an icon
-                pass
+            # Fall back to looking for other icon files
+            fallback_icons = [
+                "resources/icon.ico"
+            ]
+            
+            for fallback in fallback_icons:
+                fallback_path = resource_path(fallback)
+                if os.path.exists(fallback_path):
+                    self.setWindowIcon(QIcon(fallback_path))
+                    break
         
         # Initialize UI
         self.init_ui()

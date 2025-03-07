@@ -65,8 +65,12 @@ jobs:
           if (-not (Test-Path -Path "resources")) {
             New-Item -ItemType Directory -Path "resources"
           }
-          if (-not (Test-Path -Path "resources\icon.ico")) {
+          if (-not (Test-Path -Path "resources\icon.png")) {
+            # Use a fallback icon if the new logo doesn't exist
             python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.ico')"
+          } else {
+            # Convert the PNG to ICO format for Windows
+            python -c "from PIL import Image; img = Image.open('resources/icon.png').resize((256, 256)); img.save('resources/icon.ico')"
           }
           
       - name: Build with PyInstaller
@@ -104,9 +108,9 @@ jobs:
       - name: Ensure resources directory
         run: |
           mkdir -p resources
-          # Create a proper macOS icon if it doesn't exist
           if [ ! -f "resources/icon.png" ]; then
-            python -c "from PIL import Image; img = Image.new('RGB', (1024, 1024), color=(13, 99, 156)); img.save('resources/icon.png')"
+            # Create a fallback icon if it doesn't exist
+            python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
           fi
           # Convert PNG to ICNS format for better macOS integration
           mkdir -p macOS.iconset
@@ -453,6 +457,7 @@ jobs:
         run: |
           mkdir -p resources
           if [ ! -f "resources/icon.png" ]; then
+            # Create a fallback icon if it doesn't exist
             python -c "from PIL import Image; img = Image.new('RGB', (64, 64), color=(13, 99, 156)); img.save('resources/icon.png')"
           fi
           
